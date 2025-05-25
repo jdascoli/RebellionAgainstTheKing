@@ -7,53 +7,50 @@ export default function Singleplayer() {
 
     const [coin, setCoin] = useState('heads');
     const [flipping, setFlipping] = useState(false);
+    const [flipResult, setFlipResult] = useState('heads');
+    const [flipMessage, setFlipMessage] = useState('');
 
     const Flip = () => {
         setFlipping(true);
         const num = Math.floor(Math.random() * 2);
+        const result = num === 1 ? 'Heads' : 'Tails';
+        setFlipResult(result);
         if (num === 1) {
-            console.log("heads");
-            if (coin === "heads") console.log("you go first");
-            else console.log("you go second");
+            if (coin === "heads") setFlipMessage("You go first");
+            else setFlipMessage("You go second");
         }
         else {
-            console.log("tails");
-            if (coin === "tails") console.log("you go first");
-            else console.log("you go second");
+            if (coin === "tails") setFlipMessage("You go first");
+            else setFlipMessage("You go second");
         }
     }
 
     const styles = StyleSheet.create({
-        videoContainer: {
-            width: 300,
-            height: 300,
-            justifyContent: "center",
-            alignItems: "center"
-        },
-        video: {
-            width: "100%",
-            height: "100%"
-        }
+        videoContainer: { width: 300, height: 300, justifyContent: "center", alignItems: "center" },
+        video: { width: "100%", height: "100%" }
     });
 
     return (
-        <Box style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Box style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "black" }}>
             {flipping && (
-                <View style={styles.videoContainer}>
-                    <Video
-                        source={require('../assets/videos/Heads.mp4')}
-                        style={styles.video}
-                        resizeMode="contain"
-                        repeat={false}
-                        onEnd={() => setFlipping(false)}
-                    />
-                </View>
+                <Box>
+                    <View style={styles.videoContainer}>
+                        <Video
+                            source={{ uri: `assets/videos/${flipResult}.mp4` }}
+                            style={styles.video}
+                            resizeMode="contain"
+                            repeat={false}
+                            onEnd={() => setFlipping(false)}
+                        />
+                    </View>
+                    <Box style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}>{flipMessage}</Box>
+                </Box>
             )}
             <HStack>
-                <Pressable bg="black" borderRadius="xl" onPress={() => { console.log("You pressed heads"); setCoin("heads"); Flip(); }}>
+                <Pressable bg="black" borderRadius="xl" onPress={() => { setCoin("heads"); Flip(); }}>
                     <Image h={180} w={180} source={require('../assets/images/head.png')} />
                 </Pressable>
-                <Pressable bg="black" borderRadius="xl" onPress={() => { console.log("You pressed tails"); setCoin("tails"); Flip(); }}>
+                <Pressable bg="black" borderRadius="xl" onPress={() => { setCoin("tails"); Flip(); }}>
                     <Image h={180} w={180} source={require('../assets/images/tails.png')} />
                 </Pressable>
             </HStack>
