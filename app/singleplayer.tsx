@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Pressable, HStack, Image, Box } from "react-native-ficus-ui";
+import { StyleSheet, View } from "react-native";
+import { Box, HStack, Image, Pressable } from "react-native-ficus-ui";
+import Video from 'react-native-video';
 
 export default function Singleplayer() {
 
@@ -21,9 +23,32 @@ export default function Singleplayer() {
         }
     }
 
+    const styles = StyleSheet.create({
+        videoContainer: {
+            width: 300,
+            height: 300,
+            justifyContent: "center",
+            alignItems: "center"
+        },
+        video: {
+            width: "100%",
+            height: "100%"
+        }
+    });
+
     return (
         <Box style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-            {flipping ? (<video width="640" height="360" controls><source src='../assets/videos/Heads.png' type="video/mp4" /></video>) : null}
+            {flipping && (
+                <View style={styles.videoContainer}>
+                    <Video
+                        source={require('../assets/videos/Heads.mp4')}
+                        style={styles.video}
+                        resizeMode="contain"
+                        repeat={false}
+                        onEnd={() => setFlipping(false)}
+                    />
+                </View>
+            )}
             <HStack>
                 <Pressable bg="black" borderRadius="xl" onPress={() => { console.log("You pressed heads"); setCoin("heads"); Flip(); }}>
                     <Image h={180} w={180} source={require('../assets/images/head.png')} />

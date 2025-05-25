@@ -1,5 +1,5 @@
+import { useRouter } from 'expo-router/build/hooks';
 import { Button, View } from "react-native";
-import { useRouter } from 'expo-router';
 
 export default function HomeScr() {
   const router = useRouter();
