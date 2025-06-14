@@ -1,12 +1,16 @@
-import { useRouter } from 'expo-router/build/hooks';
-import { Button, View } from "react-native";
+import { useRouter } from "expo-router/build/hooks";
+import { ImageBackground, Pressable, Text, View } from "react-native";
 
-export default function HomeScr() {
+export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <View style={{flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "black"}}>
-      <Button title="Singleplayer" onPress={() => router.push('/singleplayer')} />
-    </View>
+    <ImageBackground source={require(`../assets/images/mossWall.png`)} style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
+      <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
+        <Pressable onPress={() => router.push("/singleplayer")}style={{ backgroundColor: "rgb(8, 44, 11)", paddingVertical: 20, paddingHorizontal: 40, borderRadius: 10,}}>
+        <Text style={{ fontSize: 24, color: "white", fontWeight: "bold" }}>Singleplayer</Text>
+      </Pressable>
+      </View>
+    </ImageBackground>
   );
 }
