@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { Box, HStack, Image, Pressable } from "react-native-ficus-ui";
+import { Box } from "react-native-ficus-ui";
 import Video from 'react-native-video';
 
 export default function Singleplayer() {
@@ -10,7 +10,7 @@ export default function Singleplayer() {
     const [flipResult, setFlipResult] = useState('heads');
     const [flipMessage, setFlipMessage] = useState('');
 
-    const Flip = () => {
+    useLayoutEffect(() => {
         setFlipping(true);
         const num = Math.floor(Math.random() * 2);
         const result = num === 1 ? 'Heads' : 'Tails';
@@ -23,7 +23,7 @@ export default function Singleplayer() {
             if (coin === "tails") setFlipMessage("You go first");
             else setFlipMessage("You go second");
         }
-    }
+    },[coin]);
 
     const styles = StyleSheet.create({
         videoContainer: { width: 300, height: 300, justifyContent: "center", alignItems: "center" },
@@ -46,13 +46,5 @@ export default function Singleplayer() {
                     <Box style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}>{flipMessage}</Box>
                 </Box>
             )}
-            <HStack>
-                <Pressable bg="black" borderRadius="xl" onPress={() => { setCoin("heads"); Flip(); }}>
-                    <Image h={180} w={180} source={require('../assets/images/head.png')} />
-                </Pressable>
-                <Pressable bg="black" borderRadius="xl" onPress={() => { setCoin("tails"); Flip(); }}>
-                    <Image h={180} w={180} source={require('../assets/images/tails.png')} />
-                </Pressable>
-            </HStack>
         </Box>);
 }
