@@ -25,7 +25,7 @@ export default function Singleplayer() {
     });
 
     return (
-        <ImageBackground source={require('../assets/images/mossWall.png')} resizeMode="cover" style={styles.image}>
+        <ImageBackground source={require('../assets/images/mossWall.png')} resizeMode="cover" style={[styles.image, styles.video]}>
             <Box style={{ width: "85%", height: "85%", justifyContent: "center", alignItems: "center", backgroundColor: "rgb(61, 61, 61)"}}>
                 <Box style={{ width: "98%", height: "97%", justifyContent: "center", alignItems: "center", backgroundColor: "black"}}>
                     {flipping && (
