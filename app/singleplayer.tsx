@@ -1,7 +1,7 @@
+import { ResizeMode, Video } from "expo-av";
 import { useLayoutEffect, useState } from "react";
 import { ImageBackground, StyleSheet, View } from "react-native";
-import { Box } from "react-native-ficus-ui";
-import { Video } from "react-native-video";
+
 
 export default function Singleplayer() {
 
@@ -21,28 +21,34 @@ export default function Singleplayer() {
     const styles = StyleSheet.create({
         videoContainer: { width: 300, height: 300, justifyContent: "center", alignItems: "center" },
         video: { width: "100%", height: "100%" },
-        image: { flex: 1, alignItems: "center", justifyContent: "center" }
+        image: { flex: 1, alignItems: "center", justifyContent: "center" },
+        outBox: { width: "85%", height: "85%", justifyContent: "center", alignItems: "center", backgroundColor: "rgb(61, 61, 61)"},
+        inBox: { width: "98%", height: "97%", justifyContent: "center", alignItems: "center", backgroundColor: "black"}
     });
+
+    const videoSource = flipResult === 'heads' ? require('../assets/videos/Heads.mp4') : require('../assets/videos/Tails.mp4');
 
     return (
         <ImageBackground source={require('../assets/images/mossWall.png')} resizeMode="cover" style={[styles.image, styles.video]}>
-            <Box style={{ width: "85%", height: "85%", justifyContent: "center", alignItems: "center", backgroundColor: "rgb(61, 61, 61)"}}>
-                <Box style={{ width: "98%", height: "97%", justifyContent: "center", alignItems: "center", backgroundColor: "black"}}>
+            <View style={styles.outBox}>
+                <View style={styles.inBox}>
                     {flipping && (
-                        <Box>
+                        <View>
                             <View style={styles.videoContainer}>
                                 <Video
-                                    source={{ uri: `assets/videos/${flipResult}.mp4` }}
+                                    source={videoSource}
                                     style={styles.video}
-                                    resizeMode="contain"
-                                    repeat={false}
-                                    onEnd={() => setFlipping(false)}
+                                    resizeMode={ResizeMode.CONTAIN}
+                                    shouldPlay
+                                    isLooping={false}
+                                    onPlaybackStatusUpdate={status => {console.log("Video status:", status); if (status.isLoaded && status.didJustFinish) setFlipping(false);}}
+                                    useNativeControls={false}
                                 />
                             </View>
-                            <Box style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}>{flipMessage}</Box>
-                        </Box>
+                            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}>{flipMessage}</View>
+                        </View>
                     )}
-                </Box>
-            </Box>
+                </View>
+            </View>
         </ImageBackground>);
 }
