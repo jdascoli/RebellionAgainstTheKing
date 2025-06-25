@@ -11,6 +11,7 @@ export default function Singleplayer() {
     const [flipMessage, setFlipMessage] = useState('');
     const [showCards, setShowCards] = useState(false);
     const [hand, setHand] = useState<string[]>([]);
+    const [opHand, setOpHand] = useState<string[]>([]);
     const [playedCard, setPlayedCard] = useState<string | null>(null);
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
@@ -20,7 +21,7 @@ export default function Singleplayer() {
     const peasantImg = require('../assets/images/peasant.png');
     const villagerImg = require('../assets/images/villager.png');
     const mossImg = require('../assets/images/mossWall.png');
-    const back = require('../assets/images/back.png');
+    const backImg = require('../assets/images/back.png');
 
     useLayoutEffect(() => {
         setFlipping(true);
@@ -31,11 +32,17 @@ export default function Singleplayer() {
         setFlipMessage(msg);
     }, []);
 
-     const endFlip = () => {
+    const endFlip = () => {
         setFlipping(false);
         setShowCards(true);
-        if (flipResult === "heads") setHand(["king", "villager", "villager", "villager", "villager"]);
-        else setHand(["peasant", "villager", "villager", "villager", "villager"]);
+        if (flipResult === "heads") {
+            setHand(["king", "villager", "villager", "villager", "villager"]);
+            setOpHand(["peasant", "villager", "villager", "villager", "villager"]);
+        }
+        else {
+            setHand(["peasant", "villager", "villager", "villager", "villager"]);
+            setOpHand(["king", "villager", "villager", "villager", "villager"]);
+        }
     };
 
     const styles = StyleSheet.create({
@@ -44,7 +51,8 @@ export default function Singleplayer() {
         image: { flex: 1, alignItems: "center", justifyContent: "center" },
         outBox: { width: "85%", height: "85%", justifyContent: "center", alignItems: "center", backgroundColor: "rgb(61, 61, 61)" },
         inBox: { width: "98%", height: "97%", justifyContent: "center", alignItems: "center", backgroundColor: "black" },
-        cardRow: { position: "absolute", bottom: -20, left: 0, right: 0, flexDirection: "row", justifyContent: "center", alignItems: "center",},
+        cardRow: { position: "absolute", bottom: -20, flexDirection: "row", justifyContent: "center", alignItems: "center", },
+        opCardRow: { position: "absolute", top: -20, flexDirection: "row", justifyContent: "center", alignItems: "center", }
     });
 
     const videoUri = flipResult === "heads" ? headImg : tailImg;
@@ -77,7 +85,7 @@ export default function Singleplayer() {
                                         useNativeControls
                                         resizeMode={ResizeMode.CONTAIN}
                                         style={{ width: 300, height: 300 }}
-                                        onPlaybackStatusUpdate={(status) => {if ('isLoaded' in status && status.isLoaded && status.didJustFinish) setFlipping(false);}}
+                                        onPlaybackStatusUpdate={(status) => { if ('isLoaded' in status && status.isLoaded && status.didJustFinish) setFlipping(false); }}
                                     />
                                 )}
                             </View>
@@ -86,31 +94,38 @@ export default function Singleplayer() {
                     )}
                 </View>
                 {showCards && (
-                    <View style={styles.cardRow}>
-                        {hand.map((card, index) => (
-                            <Pressable 
-                                key={index} 
-                                onPress={() => {
-                                    setPlayedCard(card);
-                                    setHand((prev) => prev.filter((_, i) => i !== index));
-                                }}
-                                onHoverIn={() => setHoveredCard(index)}
-                                onHoverOut={() => setHoveredCard(null)}
-                                style={({ pressed }) => [
-                                            {
-                                                marginHorizontal: 5,
-                                                transform: [{translateY: pressed || hoveredCard === index ? -10 : 0,},],
-                                                shadowColor: "#ffffff",
-                                                shadowOffset: { width: 0, height: 0 },
-                                                shadowOpacity: pressed || hoveredCard === index ? 1 : 0,
-                                                shadowRadius:pressed || hoveredCard === index ? 20 : 0,
-                                            },
-                                        ]}
-                            >
-                                <Image source={card === 'king' ? kingImg : (card === 'peasant'? peasantImg : villagerImg)} style={{ width: 90, height: 120 }}/>        
-                            </Pressable>
-                        ))}
-                    </View>
+                    <>
+                        <View style={styles.opCardRow}>
+                            {opHand.map((_, index) => (
+                                <Image key={index} source={backImg} style={{ width: 90, height: 120}} />
+                            ))}
+                        </View>
+                        <View style={styles.cardRow}>
+                            {hand.map((card, index) => (
+                                <Pressable
+                                    key={index}
+                                    onPress={() => {
+                                        setPlayedCard(card);
+                                        setHand((prev) => prev.filter((_, i) => i !== index));
+                                    }}
+                                    onHoverIn={() => setHoveredCard(index)}
+                                    onHoverOut={() => setHoveredCard(null)}
+                                    style={({ pressed }) => [
+                                        {
+                                            marginHorizontal: 5,
+                                            transform: [{ translateY: pressed || hoveredCard === index ? -10 : 0, },],
+                                            shadowColor: "#ffffff",
+                                            shadowOffset: { width: 0, height: 0 },
+                                            shadowOpacity: pressed || hoveredCard === index ? 1 : 0,
+                                            shadowRadius: pressed || hoveredCard === index ? 20 : 0,
+                                        },
+                                    ]}
+                                >
+                                    <Image source={card === 'king' ? kingImg : (card === 'peasant' ? peasantImg : villagerImg)} style={{ width: 90, height: 120 }} />
+                                </Pressable>
+                            ))}
+                        </View>
+                    </>
                 )}
             </View>
         </ImageBackground>);
