@@ -1,6 +1,6 @@
 import { Video as ExpoVideo, ResizeMode } from "expo-av";
 import { useLayoutEffect, useState } from "react";
-import { ImageBackground, Platform, StyleSheet, View } from "react-native";
+import { ImageBackground, Platform, StyleSheet, Text, View } from "react-native";
 import { Video as WebVideo } from "react-native-video";
 
 
@@ -18,6 +18,8 @@ export default function Singleplayer() {
         setFlipResult(result);
         setFlipMessage(msg);
     }, []);
+
+
 
     const styles = StyleSheet.create({
         videoContainer: { width: 300, height: 300, justifyContent: "center", alignItems: "center" },
@@ -55,10 +57,11 @@ export default function Singleplayer() {
                                         useNativeControls
                                         resizeMode={ResizeMode.CONTAIN}
                                         style={{ width: 300, height: 300 }}
+                                        onPlaybackStatusUpdate={(status) => {if ('isLoaded' in status && status.isLoaded && status.didJustFinish) setFlipping(false);}}
                                     />
                                 )}
                             </View>
-                            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}>{flipMessage}</View>
+                            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}> <Text>{flipMessage}</Text></View>
                         </View>
                     )}
                 </View>
