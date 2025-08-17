@@ -1,4 +1,5 @@
 import { Video as ExpoVideo, ResizeMode } from "expo-av";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Video as WebVideo } from "react-native-video";
@@ -16,6 +17,9 @@ export default function Singleplayer() {
     const [revealedRounds, setRevealedRounds] = useState<number[]>([]);
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
     const [canPlay, setCanPlay] = useState(true);
+    const [gameResult, setGameResult] = useState<"win" | "lose" | null>(null);
+
+    const router = useRouter();
 
     const headImg = "https://flip-video-host.vercel.app/Heads.mp4"
     const tailImg = "https://flip-video-host.vercel.app/Tails.mp4"
@@ -25,9 +29,29 @@ export default function Singleplayer() {
     const mossImg = require('../assets/images/mossWall.png');
     const backImg = require('../assets/images/back.png');
 
-    const tableWidth = 400; 
-    const maxOffset = tableWidth * 0.33; 
+    const tableWidth = 400;
+    const maxOffset = tableWidth * 0.33;
     const spacing = Math.min(maxOffset / (playedPairs.length - 1 || 1), 40);
+
+    const beats: Record<string, string> = {
+        king: "villager",
+        villager: "peasant",
+        peasant: "king",
+    };
+
+    const determineWinner = (playerCard: string, opponentCard: string) => {
+        if (beats[playerCard] === opponentCard) return "win";
+        else if (beats[opponentCard] === playerCard) return "lose";
+        return "tie";
+    };
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const navEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+            if (navEntries[0]?.type === "reload") requestAnimationFrame(() => router.push("/"));
+        }
+    }, [router]);
+
 
     useEffect(() => {
         setFlipping(true);
@@ -54,9 +78,7 @@ export default function Singleplayer() {
     const playCard = (card: string, index: number) => {
         if (!canPlay) return;
         setCanPlay(false);
-
         setHand((prev) => prev.filter((_, i) => i !== index));
-        const roundIndex = playedPairs.length;
         setPlayedPairs((prev) => [...prev, { me: card, op: "" }]);
 
         setTimeout(() => {
@@ -70,7 +92,12 @@ export default function Singleplayer() {
                 updated[lastIndex] = { ...updated[lastIndex], op: opCard };
                 return updated;
             });
-            setTimeout(() => { setRevealedRounds((prev) => [...prev, roundIndex]); setCanPlay(true);}, 1000);
+            setTimeout(() => {
+                const result = determineWinner(card, opCard);
+                setRevealedRounds((prev) => [...prev, prev.length]);
+                if (result === "win" || result === "lose") setGameResult(result);
+                else { setCanPlay(true); }
+            }, 1000);
         }, 600);
     };
 
@@ -124,7 +151,7 @@ export default function Singleplayer() {
                             {playedPairs.map((pair, idx) => {
                                 const revealed = revealedRounds.includes(idx);
                                 return (
-                                    <View key={idx} style={{  marginLeft: idx === 0 ? 0 : spacing, alignItems: "center" }}>
+                                    <View key={idx} style={{ marginLeft: idx === 0 ? 0 : spacing, alignItems: "center" }}>
                                         <Image source={revealed ? pair.op === "king" ? kingImg : pair.op === "peasant" ? peasantImg : villagerImg : backImg}
                                             style={{ width: 90, height: 120, marginBottom: 10 }}
                                         />
@@ -134,6 +161,14 @@ export default function Singleplayer() {
                                     </View>
                                 );
                             })}
+                        </View>
+                    )}
+                    {gameResult && (
+                        <View style={{ position: "absolute", top: "40%", alignItems: "center" }}>
+                            <Text style={{ fontSize: 32, color: "white" }}>{gameResult === "win" ? "You Win!" : "You Lose!"}</Text>
+                            <Pressable onPress={() => router.push("/")} style={{ marginTop: 20, padding: 10, backgroundColor: "blue", borderRadius: 8 }}>
+                                <Text style={{ color: "white" }}>Return to Menu</Text>
+                            </Pressable>
                         </View>
                     )}
                 </View>
@@ -148,6 +183,7 @@ export default function Singleplayer() {
                             {hand.map((card, index) => (
                                 <Pressable
                                     key={index}
+                                    disabled={!canPlay}
                                     onPress={() => playCard(card, index)}
                                     onHoverIn={() => setHoveredCard(index)}
                                     onHoverOut={() => setHoveredCard(null)}
