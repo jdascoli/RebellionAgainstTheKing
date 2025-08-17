@@ -15,7 +15,7 @@ export default function Singleplayer() {
     const [playedPairs, setPlayedPairs] = useState<{ me: string; op: string }[]>([]);
     const [revealedRounds, setRevealedRounds] = useState<number[]>([]);
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-    const [round, setRound] = useState(0);
+    const [canPlay, setCanPlay] = useState(true);
 
     const headImg = "https://flip-video-host.vercel.app/Heads.mp4"
     const tailImg = "https://flip-video-host.vercel.app/Tails.mp4"
@@ -24,6 +24,10 @@ export default function Singleplayer() {
     const villagerImg = require('../assets/images/villager.png');
     const mossImg = require('../assets/images/mossWall.png');
     const backImg = require('../assets/images/back.png');
+
+    const tableWidth = 400; 
+    const maxOffset = tableWidth * 0.33; 
+    const spacing = Math.min(maxOffset / (playedPairs.length - 1 || 1), 40);
 
     useEffect(() => {
         setFlipping(true);
@@ -48,20 +52,26 @@ export default function Singleplayer() {
     };
 
     const playCard = (card: string, index: number) => {
+        if (!canPlay) return;
+        setCanPlay(false);
+
         setHand((prev) => prev.filter((_, i) => i !== index));
         const roundIndex = playedPairs.length;
         setPlayedPairs((prev) => [...prev, { me: card, op: "" }]);
+
         setTimeout(() => {
             const randIndex = Math.floor(Math.random() * opHand.length);
             const opCard = opHand[randIndex];
             setOpHand((prev) => prev.filter((_, i) => i !== randIndex));
+
             setPlayedPairs((prev) => {
                 const updated = [...prev];
-                updated[roundIndex] = { ...updated[roundIndex], op: opCard };
+                const lastIndex = updated.length - 1;
+                updated[lastIndex] = { ...updated[lastIndex], op: opCard };
                 return updated;
             });
-            setTimeout(() => { setRevealedRounds((prev) => [...prev, roundIndex]); }, 1000);
-        }, 1000);
+            setTimeout(() => { setRevealedRounds((prev) => [...prev, roundIndex]); setCanPlay(true);}, 1000);
+        }, 600);
     };
 
     const styles = StyleSheet.create({
@@ -110,11 +120,11 @@ export default function Singleplayer() {
                         </View>
                     )}
                     {playedPairs.length > 0 && (
-                        <View style={{ position: "absolute", top: "30%", left: "20%", flexDirection: "row" }}>
+                        <View style={{ position: "absolute", top: "30%", left: "27.3%", flexDirection: "row" }}>
                             {playedPairs.map((pair, idx) => {
                                 const revealed = revealedRounds.includes(idx);
                                 return (
-                                    <View key={idx} style={{ marginLeft: idx * 40, alignItems: "center" }}>
+                                    <View key={idx} style={{  marginLeft: idx === 0 ? 0 : spacing, alignItems: "center" }}>
                                         <Image source={revealed ? pair.op === "king" ? kingImg : pair.op === "peasant" ? peasantImg : villagerImg : backImg}
                                             style={{ width: 90, height: 120, marginBottom: 10 }}
                                         />
