@@ -1,5 +1,5 @@
 import { Video as ExpoVideo, ResizeMode } from "expo-av";
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { Video as WebVideo } from "react-native-video";
 
@@ -12,8 +12,10 @@ export default function Singleplayer() {
     const [showCards, setShowCards] = useState(false);
     const [hand, setHand] = useState<string[]>([]);
     const [opHand, setOpHand] = useState<string[]>([]);
-    const [playedCard, setPlayedCard] = useState<string | null>(null);
+    const [playedPairs, setPlayedPairs] = useState<{ me: string; op: string }[]>([]);
+    const [revealedRounds, setRevealedRounds] = useState<number[]>([]);
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+    const [round, setRound] = useState(0);
 
     const headImg = "https://flip-video-host.vercel.app/Heads.mp4"
     const tailImg = "https://flip-video-host.vercel.app/Tails.mp4"
@@ -23,7 +25,7 @@ export default function Singleplayer() {
     const mossImg = require('../assets/images/mossWall.png');
     const backImg = require('../assets/images/back.png');
 
-    useLayoutEffect(() => {
+    useEffect(() => {
         setFlipping(true);
         const num = Math.floor(Math.random() * 2);
         const result = num === 1 ? "heads" : "tails";
@@ -45,6 +47,23 @@ export default function Singleplayer() {
         }
     };
 
+    const playCard = (card: string, index: number) => {
+        setHand((prev) => prev.filter((_, i) => i !== index));
+        const roundIndex = playedPairs.length;
+        setPlayedPairs((prev) => [...prev, { me: card, op: "" }]);
+        setTimeout(() => {
+            const randIndex = Math.floor(Math.random() * opHand.length);
+            const opCard = opHand[randIndex];
+            setOpHand((prev) => prev.filter((_, i) => i !== randIndex));
+            setPlayedPairs((prev) => {
+                const updated = [...prev];
+                updated[roundIndex] = { ...updated[roundIndex], op: opCard };
+                return updated;
+            });
+            setTimeout(() => { setRevealedRounds((prev) => [...prev, roundIndex]); }, 1000);
+        }, 1000);
+    };
+
     const styles = StyleSheet.create({
         videoContainer: { width: 300, height: 300, justifyContent: "center", alignItems: "center" },
         video: { width: "100%", height: "100%" },
@@ -56,8 +75,6 @@ export default function Singleplayer() {
     });
 
     const videoUri = flipResult === "heads" ? headImg : tailImg;
-
-
 
     return (
         <ImageBackground source={mossImg} resizeMode="cover" style={[styles.image, styles.video]}>
@@ -92,28 +109,42 @@ export default function Singleplayer() {
                             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}> <Text>{flipMessage}</Text></View>
                         </View>
                     )}
+                    {playedPairs.length > 0 && (
+                        <View style={{ position: "absolute", top: "30%", left: "20%", flexDirection: "row" }}>
+                            {playedPairs.map((pair, idx) => {
+                                const revealed = revealedRounds.includes(idx);
+                                return (
+                                    <View key={idx} style={{ marginLeft: idx * 40, alignItems: "center" }}>
+                                        <Image source={revealed ? pair.op === "king" ? kingImg : pair.op === "peasant" ? peasantImg : villagerImg : backImg}
+                                            style={{ width: 90, height: 120, marginBottom: 10 }}
+                                        />
+                                        <Image source={revealed ? pair.me === "king" ? kingImg : pair.me === "peasant" ? peasantImg : villagerImg : backImg}
+                                            style={{ width: 90, height: 120 }}
+                                        />
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    )}
                 </View>
                 {showCards && (
                     <>
                         <View style={styles.opCardRow}>
                             {opHand.map((_, index) => (
-                                <Image key={index} source={backImg} style={{ width: 90, height: 120}} />
+                                <Image key={index} source={backImg} style={{ width: 90, height: 120 }} />
                             ))}
                         </View>
                         <View style={styles.cardRow}>
                             {hand.map((card, index) => (
                                 <Pressable
                                     key={index}
-                                    onPress={() => {
-                                        setPlayedCard(card);
-                                        setHand((prev) => prev.filter((_, i) => i !== index));
-                                    }}
+                                    onPress={() => playCard(card, index)}
                                     onHoverIn={() => setHoveredCard(index)}
                                     onHoverOut={() => setHoveredCard(null)}
                                     style={({ pressed }) => [
                                         {
                                             marginHorizontal: 5,
-                                            transform: [{ translateY: pressed || hoveredCard === index ? -10 : 0, },],
+                                            transform: [{ translateY: pressed || hoveredCard === index ? -10 : 0 }],
                                             shadowColor: "#ffffff",
                                             shadowOffset: { width: 0, height: 0 },
                                             shadowOpacity: pressed || hoveredCard === index ? 1 : 0,
@@ -121,7 +152,10 @@ export default function Singleplayer() {
                                         },
                                     ]}
                                 >
-                                    <Image source={card === 'king' ? kingImg : (card === 'peasant' ? peasantImg : villagerImg)} style={{ width: 90, height: 120 }} />
+                                    <Image
+                                        source={card === "king" ? kingImg : card === "peasant" ? peasantImg : villagerImg}
+                                        style={{ width: 90, height: 120 }}
+                                    />
                                 </Pressable>
                             ))}
                         </View>
