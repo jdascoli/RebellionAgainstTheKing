@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 export type Card = "king" | "villager" | "peasant"
 
@@ -9,13 +9,13 @@ interface PlayerMemory {
 
 // --- Load / Save Memory ---
 async function loadMemory(): Promise<PlayerMemory> {
-    const raw = await AsyncStorage.getItem("playerMemory")
+    const raw = await SecureStore.getItemAsync("playerMemory")
     if (raw) return JSON.parse(raw)
     return { positions: { king: [], peasant: [] }, counts: { first: {}, second: {} } }
 }
 
 async function saveMemory(mem: PlayerMemory) {
-    await AsyncStorage.setItem("playerMemory", JSON.stringify(mem))
+    await SecureStore.setItemAsync("playerMemory", JSON.stringify(mem))
 }
 
 // --- Record a move ---
@@ -78,5 +78,5 @@ export async function chooseAdaptiveBotCard(
 
 // --- Reset memory ---
 export async function resetMemory() {
-    await AsyncStorage.removeItem("playerMemory")
+    await SecureStore.deleteItemAsync("playerMemory")
 }

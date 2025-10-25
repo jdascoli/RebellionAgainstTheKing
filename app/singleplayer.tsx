@@ -97,14 +97,14 @@ export default function Singleplayer() {
     useEffect(() => {
         // Guard conditions — only execute when it's the bot’s turn
         if (playerTurn !== "op" || gameResult || !showCards || flipping || roundInProgress || !opHand.length) return
-        
+
         setRoundInProgress(true)
         setCanPlay(false)
 
         const runAI = async () => {
             await new Promise(r => setTimeout(r, 800))
-            const { card: opCard} = await chooseAdaptiveBotCard(opHand, nextStarter === "me" ? "second" : "first", playerRole)
-            setOpHand(p => p.filter(c => c !== opCard))
+            const { card: opCard } = await chooseAdaptiveBotCard(opHand, nextStarter === "me" ? "second" : "first", playerRole)
+            setOpHand(p => {const i = p.indexOf(opCard); return i >= 0 ? [...p.slice(0, i), ...p.slice(i + 1)] : p})
             const last = playedPairs[playedPairs.length - 1]
 
             // If player already played, this completes the round
@@ -197,7 +197,7 @@ export default function Singleplayer() {
         setTimeout(() => {
             const idx = Math.floor(Math.random() * opHand.length)
             const opCard = opHand[idx]
-            setOpHand(p => p.filter((_, i) => i !== idx))
+            setOpHand(p => {const copy = [...p]; copy.splice(idx, 1); return copy})
             setPlayedPairs(p => { const u = [...p]; u[u.length - 1] = { ...u[u.length - 1], op: opCard }; return u })
 
             setTimeout(() => {
