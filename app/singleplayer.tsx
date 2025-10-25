@@ -1,13 +1,14 @@
 import { Video as ExpoVideo, ResizeMode } from "expo-av"
 import { useRouter } from "expo-router"
 import { useEffect, useState } from "react"
-import { Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from "react-native"
+import { Animated, Easing, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { Video as WebVideo } from "react-native-video"
 
 export default function Singleplayer() {
     const [flipping, setFlipping] = useState(false)
     const [flipResult, setFlipResult] = useState<'heads' | 'tails'>('heads')
     const [flipMessage, setFlipMessage] = useState('')
+    const [showFlipMessage, setShowFlipMessage] = useState(false)
     const [showCards, setShowCards] = useState(false)
     const [hand, setHand] = useState<Card[]>([])
     const [opHand, setOpHand] = useState<Card[]>([])
@@ -68,7 +69,7 @@ export default function Singleplayer() {
                 setTimeout(() => { setPlayerTurn("me"); setCanPlay(true); setRoundInProgress(false) }, 800)
             }
         }, 800)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playerTurn, gameResult, showCards, flipping, roundInProgress, opHand, playedPairs])
 
     useEffect(() => {
@@ -83,12 +84,15 @@ export default function Singleplayer() {
         if (flipResult === "heads") {
             setHand(["king", "villager", "villager", "villager", "villager"])
             setOpHand(["peasant", "villager", "villager", "villager", "villager"])
-            setPlayerTurn("me"); setNextStarter("op")
+            setPlayerTurn("me"); setNextStarter("op"); setFlipMessage("You go first")
         } else {
             setHand(["peasant", "villager", "villager", "villager", "villager"])
             setOpHand(["king", "villager", "villager", "villager", "villager"])
-            setPlayerTurn("op"); setNextStarter("me")
+            setPlayerTurn("op"); setNextStarter("me"); setFlipMessage("You go second")
         }
+        setShowFlipMessage(true)
+        setTimeout(() => {setShowFlipMessage(false); setShowCards(true)
+        }, 2000)
     }
 
     const playCard = (card: string, index: number) => {
@@ -97,7 +101,7 @@ export default function Singleplayer() {
         setHand(p => p.filter((_, i) => i !== index))
         const last = playedPairs[playedPairs.length - 1]
 
-        // bot already played (you’re second)
+        //bot already played 
         if (last && last.op && !last.me) {
             const opCard = hiddenBotCard; if (!opCard) return
             setHiddenBotCard(null)
@@ -112,7 +116,7 @@ export default function Singleplayer() {
             return
         }
 
-        // you go first
+        //you go first
         setPlayedPairs(p => [...p, { me: card, op: "" }])
         setTimeout(() => {
             const idx = Math.floor(Math.random() * opHand.length)
@@ -140,6 +144,17 @@ export default function Singleplayer() {
     })
 
     const vid = flipResult === "heads" ? imgs.head : imgs.tail
+    const [fadeAnim] = useState(new Animated.Value(0))
+    
+    useEffect(() => {
+        if (showFlipMessage) {
+            Animated.sequence([
+                Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.exp) }),
+                Animated.delay(1000),
+                Animated.timing(fadeAnim, { toValue: 0, duration: 500, useNativeDriver: true, easing: Easing.in(Easing.exp) })
+            ]).start()
+        }
+    }, [showFlipMessage, fadeAnim])
 
     return (
         <ImageBackground source={imgs.moss} resizeMode="cover" style={[s.image, s.video]}>
@@ -154,10 +169,16 @@ export default function Singleplayer() {
                                     <ExpoVideo source={{ uri: vid }} shouldPlay isMuted isLooping={false} useNativeControls={false} resizeMode={ResizeMode.CONTAIN} style={{ width: 300, height: 300 }} onPlaybackStatusUpdate={s => { if ('isLoaded' in s && s.isLoaded && s.didJustFinish) endFlip() }} />
                                 )}
                             </View>
-                            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "white" }}>
-                                <Text>{flipMessage}</Text>
-                            </View>
                         </View>
+                    )}
+                    {showFlipMessage && (
+                        <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center",
+                            backgroundColor: "rgba(0,0,0,0.6)", opacity: fadeAnim}}>
+                            <Text style={{fontSize: 36, color: "#fff", fontWeight: "bold", textShadowColor: "rgba(255,255,255,0.8)",
+                                textShadowOffset: { width: 0, height: 0 },textShadowRadius: 20}}>
+                                {flipMessage}
+                            </Text>
+                        </Animated.View>
                     )}
                     {playedPairs.length > 0 && (
                         <View style={{ position: "absolute", top: "30%", left: "27.3%", flexDirection: "row" }}>
