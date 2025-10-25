@@ -5,13 +5,23 @@ import { useEffect, useState } from "react"
 import { Animated, Dimensions, Easing, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { Video as WebVideo } from "react-native-video"
 
-
+// ================================
+// Singleplayer Game Screen
+// ================================
 export default function Singleplayer() {
+
+    // -------------------------------
+    // Core Game State
+    // -------------------------------
     const [flipping, setFlipping] = useState(false)
     const [flipResult, setFlipResult] = useState<'heads' | 'tails'>('heads')
     const [flipMessage, setFlipMessage] = useState('')
     const [showFlipMessage, setShowFlipMessage] = useState(false)
     const [showCards, setShowCards] = useState(false)
+
+    // -------------------------------
+    // Player / Opponent Game Data
+    // -------------------------------
     const [hand, setHand] = useState<Card[]>([])
     const [opHand, setOpHand] = useState<Card[]>([])
     const [playedPairs, setPlayedPairs] = useState<{ me: string; op: string }[]>([])
@@ -23,8 +33,13 @@ export default function Singleplayer() {
     const [hiddenBotCard, setHiddenBotCard] = useState<string | null>(null)
     const [roundInProgress, setRoundInProgress] = useState(false)
     const [nextStarter, setNextStarter] = useState<"me" | "op">("me")
+
+    // -------------------------------
+    // Responsive Layout
+    // -------------------------------
     const [screen, setScreen] = useState(Dimensions.get("window"))
 
+    // Update card sizing dynamically on resize / rotation
     useEffect(() => {
         const sub = Dimensions.addEventListener("change", ({ window }) => setScreen(window))
         return () => sub.remove()
@@ -33,6 +48,8 @@ export default function Singleplayer() {
     const screenW = screen.width
     const screenH = screen.height
     const isMobile = Platform.OS !== "web"
+
+    // Card sizing logic 
     const widthScale = 0.45
     const heightScale = 0.15
     const maxCards = 5
@@ -40,7 +57,13 @@ export default function Singleplayer() {
     const baseSize = Math.min(maxWidthPerCard, screenH * heightScale)
     const cardW = Math.min(Math.max(baseSize, 45), isMobile ? 80 : 140)
     const cardH = cardW * 1.33
+
+    // Navigation helper
     const router = useRouter()
+
+    // -------------------------------
+    // Assets
+    // -------------------------------
     const imgs = {
         head: "https://flip-video-host.vercel.app/Heads.mp4",
         tail: "https://flip-video-host.vercel.app/Tails.mp4",
@@ -51,37 +74,51 @@ export default function Singleplayer() {
         back: require('../assets/images/back.png')
     }
 
+    // Card spacing between played pairs
     const spacing = Math.min((400 * 0.33) / (playedPairs.length - 1 || 1), 40)
 
+    // -------------------------------
+    // Card and Win Logic
+    // -------------------------------
     type Card = "king" | "villager" | "peasant"
-
     const beats: Record<Card, Card> = {
         king: "villager",
         villager: "peasant",
         peasant: "king"
     }
-
     const determineWinner = (me: Card, op: Card) =>
         beats[me] === op ? "win" : beats[op] === me ? "lose" : "tie"
 
+    // -------------------------------
+    // Opponent AI Logic
+    // -------------------------------
     useEffect(() => {
+        // Guard conditions — only execute when it's the bot’s turn
         if (playerTurn !== "op" || gameResult || !showCards || flipping || roundInProgress || !opHand.length) return
-        setRoundInProgress(true); setCanPlay(false)
+        
+        setRoundInProgress(true)
+        setCanPlay(false)
+
         setTimeout(() => {
             const idx = Math.floor(Math.random() * opHand.length)
             const opCard = opHand[idx]
             setOpHand(p => p.filter((_, i) => i !== idx))
             const last = playedPairs[playedPairs.length - 1]
+
+            // If player already played, this completes the round
             if (last && last.me && !last.op) {
                 setPlayedPairs(p => { const u = [...p]; u[u.length - 1] = { ...u[u.length - 1], op: opCard }; return u })
                 setTimeout(() => {
                     const res = determineWinner(last.me as Card, opCard)
                     setRevealedRounds(p => [...p, p.length])
                     if (res === "win" || res === "lose") setGameResult(res)
-                    else { setNextStarter(prev => prev === "me" ? "op" : "me"); setPlayerTurn(nextStarter) }
+                    else { // Alternate who starts next round
+                        setNextStarter(prev => prev === "me" ? "op" : "me")
+                        setPlayerTurn(nextStarter) 
+                    }
                     setTimeout(() => { setCanPlay(true); setRoundInProgress(false) }, 800)
                 }, 800)
-            } else {
+            } else { // Bot goes first
                 setHiddenBotCard(opCard)
                 setPlayedPairs(p => [...p, { me: "", op: opCard }])
                 setTimeout(() => { setPlayerTurn("me"); setCanPlay(true); setRoundInProgress(false) }, 800)
@@ -90,6 +127,9 @@ export default function Singleplayer() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playerTurn, gameResult, showCards, flipping, roundInProgress, opHand, playedPairs])
 
+    // -------------------------------
+    // Coin Flip Logic
+    // -------------------------------
     useEffect(() => {
         setFlipping(true)
         const res = Math.random() < 0.5 ? "heads" : "tails"
@@ -97,6 +137,7 @@ export default function Singleplayer() {
         setFlipMessage(res === "heads" ? "You go first" : "You go second")
     }, [])
 
+    // Called when flip animation ends
     const endFlip = () => {
         setFlipping(false); setShowCards(true)
         if (flipResult === "heads") {
@@ -108,12 +149,16 @@ export default function Singleplayer() {
             setOpHand(["king", "villager", "villager", "villager", "villager"])
             setPlayerTurn("op"); setNextStarter("me"); setFlipMessage("You go second")
         }
+        // Show “You go first/second” text briefly
         setShowFlipMessage(true)
         setTimeout(() => {
             setShowFlipMessage(false); setShowCards(true)
         }, 2000)
     }
 
+    // -------------------------------
+    // Player Turn Logic
+    // -------------------------------
     const playCard = (card: string, index: number) => {
         if (!canPlay || playerTurn !== "me" || roundInProgress) return
         setCanPlay(false); setRoundInProgress(true)
@@ -124,7 +169,10 @@ export default function Singleplayer() {
         if (last && last.op && !last.me) {
             const opCard = hiddenBotCard; if (!opCard) return
             setHiddenBotCard(null)
+
+            // Merge player card with bot’s existing one
             setPlayedPairs(p => { const u = [...p]; u[u.length - 1] = { me: card, op: opCard }; return u })
+
             setTimeout(() => {
                 const res = determineWinner(card as Card, opCard as Card)
                 setRevealedRounds(p => [...p, p.length])
@@ -142,6 +190,7 @@ export default function Singleplayer() {
             const opCard = opHand[idx]
             setOpHand(p => p.filter((_, i) => i !== idx))
             setPlayedPairs(p => { const u = [...p]; u[u.length - 1] = { ...u[u.length - 1], op: opCard }; return u })
+
             setTimeout(() => {
                 const res = determineWinner(card as Card, opCard as Card)
                 setRevealedRounds(p => [...p, p.length])
@@ -152,6 +201,9 @@ export default function Singleplayer() {
         }, 800)
     }
 
+    // -------------------------------
+    // Layout Styles
+    // -------------------------------
     const s = StyleSheet.create({
         videoBox: { width: 300, height: 300, justifyContent: "center", alignItems: "center" },
         video: { width: "100%", height: "100%" },
@@ -162,6 +214,9 @@ export default function Singleplayer() {
         opRow: { position: "absolute", top: -20, flexDirection: "row", justifyContent: "center", alignItems: "center" }
     })
 
+    // -------------------------------
+    // Coin Flip Video Playback
+    // -------------------------------
     const vid = flipResult === "heads" ? imgs.head : imgs.tail
     const player = useVideoPlayer(vid, (p) => { p.play(); p.loop = false; p.muted = true })
     useEventListener(player, 'playingChange', () => {
@@ -169,8 +224,11 @@ export default function Singleplayer() {
             endFlip();
         }
     });
-    const [fadeAnim] = useState(new Animated.Value(0))
 
+    // -------------------------------
+    // Fade Animation for “You go first / second”
+    // -------------------------------
+    const [fadeAnim] = useState(new Animated.Value(0))
     useEffect(() => {
         if (showFlipMessage) {
             Animated.sequence([
@@ -181,6 +239,9 @@ export default function Singleplayer() {
         }
     }, [showFlipMessage, fadeAnim])
 
+    // -------------------------------
+    // Rendering
+    // -------------------------------
     return (
         <ImageBackground source={imgs.moss} resizeMode="cover" style={[s.image, s.video]}>
             <View style={s.out}>
