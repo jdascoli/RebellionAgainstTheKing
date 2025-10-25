@@ -1,8 +1,10 @@
-import { Video as ExpoVideo, ResizeMode } from "expo-av"
+import { useEventListener } from 'expo'
 import { useRouter } from "expo-router"
+import { VideoView as ExpoVideo, useVideoPlayer } from "expo-video"
 import { useEffect, useState } from "react"
-import { Animated, Easing, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from "react-native"
+import { Animated, Dimensions, Easing, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { Video as WebVideo } from "react-native-video"
+
 
 export default function Singleplayer() {
     const [flipping, setFlipping] = useState(false)
@@ -21,7 +23,23 @@ export default function Singleplayer() {
     const [hiddenBotCard, setHiddenBotCard] = useState<string | null>(null)
     const [roundInProgress, setRoundInProgress] = useState(false)
     const [nextStarter, setNextStarter] = useState<"me" | "op">("me")
+    const [screen, setScreen] = useState(Dimensions.get("window"))
 
+    useEffect(() => {
+        const sub = Dimensions.addEventListener("change", ({ window }) => setScreen(window))
+        return () => sub.remove()
+    }, [])
+
+    const screenW = screen.width
+    const screenH = screen.height
+    const isMobile = Platform.OS !== "web"
+    const widthScale = 0.45
+    const heightScale = 0.15
+    const maxCards = 5
+    const maxWidthPerCard = screenW * widthScale / (maxCards + 1.2)
+    const baseSize = Math.min(maxWidthPerCard, screenH * heightScale)
+    const cardW = Math.min(Math.max(baseSize, 45), isMobile ? 80 : 140)
+    const cardH = cardW * 1.33
     const router = useRouter()
     const imgs = {
         head: "https://flip-video-host.vercel.app/Heads.mp4",
@@ -91,7 +109,8 @@ export default function Singleplayer() {
             setPlayerTurn("op"); setNextStarter("me"); setFlipMessage("You go second")
         }
         setShowFlipMessage(true)
-        setTimeout(() => {setShowFlipMessage(false); setShowCards(true)
+        setTimeout(() => {
+            setShowFlipMessage(false); setShowCards(true)
         }, 2000)
     }
 
@@ -144,8 +163,14 @@ export default function Singleplayer() {
     })
 
     const vid = flipResult === "heads" ? imgs.head : imgs.tail
+    const player = useVideoPlayer(vid, (p) => { p.play(); p.loop = false; p.muted = true })
+    useEventListener(player, 'playingChange', () => {
+        if (!player.playing) {
+            endFlip();
+        }
+    });
     const [fadeAnim] = useState(new Animated.Value(0))
-    
+
     useEffect(() => {
         if (showFlipMessage) {
             Animated.sequence([
@@ -164,39 +189,45 @@ export default function Singleplayer() {
                         <View>
                             <View style={s.videoBox}>
                                 {Platform.OS === "web" ? (
-                                    <WebVideo key={Date.now()} source={{ uri: vid }} style={s.video} resizeMode="contain" repeat={false} controls={false} paused={false} onEnd={endFlip} />
+                                    <WebVideo key={Date.now()} source={{ uri: vid }} style={s.video} resizeMode="contain"
+                                        repeat={false} controls={false} paused={false} onEnd={endFlip} />
                                 ) : (
-                                    <ExpoVideo source={{ uri: vid }} shouldPlay isMuted isLooping={false} useNativeControls={false} resizeMode={ResizeMode.CONTAIN} style={{ width: 300, height: 300 }} onPlaybackStatusUpdate={s => { if ('isLoaded' in s && s.isLoaded && s.didJustFinish) endFlip() }} />
+                                    <ExpoVideo player={player} style={{ width: 300, height: 300 }} contentFit="contain" allowsFullscreen={false}
+                                        allowsPictureInPicture={false} nativeControls={false} />
                                 )}
                             </View>
                         </View>
                     )}
                     {showFlipMessage && (
-                        <Animated.View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center",
-                            backgroundColor: "rgba(0,0,0,0.6)", opacity: fadeAnim}}>
-                            <Text style={{fontSize: 36, color: "#fff", fontWeight: "bold", textShadowColor: "rgba(255,255,255,0.8)",
-                                textShadowOffset: { width: 0, height: 0 },textShadowRadius: 20}}>
+                        <Animated.View style={{
+                            position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center",
+                            backgroundColor: "rgba(0,0,0,0.6)", opacity: fadeAnim
+                        }}>
+                            <Text style={{
+                                fontSize: 36, color: "#fff", fontWeight: "bold", textShadowColor: "rgba(255,255,255,0.8)",
+                                textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 20
+                            }}>
                                 {flipMessage}
                             </Text>
                         </Animated.View>
                     )}
                     {playedPairs.length > 0 && (
-                        <View style={{ position: "absolute", top: "30%", left: "27.3%", flexDirection: "row" }}>
+                        <View style={{ position: "absolute", top: screenH * 0.22, width: "100%", flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
                             {playedPairs.map((p, i) => {
                                 const revealed = revealedRounds.includes(i)
                                 return (
                                     <View key={i} style={{ marginLeft: i === 0 ? 0 : spacing, alignItems: "center" }}>
                                         {p.op ? (
-                                            <Image source={revealed ? imgs[p.op as keyof typeof imgs] ?? imgs.villager : imgs.back} style={{ width: 90, height: 120, marginBottom: 10 }} />
+                                            <Image source={revealed ? imgs[p.op as keyof typeof imgs] ?? imgs.villager : imgs.back} style={{ width: cardW, height: cardH, marginBottom: 10 }} />
                                         ) : (
-                                            <View style={{ width: 90, height: 120, marginBottom: 10 }} />
+                                            <View style={{ width: cardW, height: cardH, marginBottom: 10 }} />
                                         )}
                                         {p.me ? (
-                                            <Image source={revealed ? imgs[p.me as keyof typeof imgs] ?? imgs.villager : imgs.back} style={{ width: 90, height: 120 }} />
+                                            <Image source={revealed ? imgs[p.me as keyof typeof imgs] ?? imgs.villager : imgs.back} style={{ width: cardW, height: cardH }} />
                                         ) : i === playedPairs.length - 1 && p.op ? (
-                                            <View style={{ width: 90, height: 120 }} />
+                                            <View style={{ width: cardW, height: cardH }} />
                                         ) : (
-                                            <View style={{ width: 90, height: 120 }} />
+                                            <View style={{ width: cardW, height: cardH }} />
                                         )}
                                     </View>
                                 )
@@ -214,11 +245,11 @@ export default function Singleplayer() {
                 </View>
                 {showCards && (
                     <>
-                        <View style={s.opRow}>{opHand.map((_, i) => <Image key={i} source={imgs.back} style={{ width: 90, height: 120 }} />)}</View>
+                        <View style={s.opRow}>{opHand.map((_, i) => <Image key={i} source={imgs.back} style={{ width: cardW, height: cardH }} />)}</View>
                         <View style={s.row}>
                             {hand.map((c, i) => (
                                 <Pressable key={i} disabled={!canPlay} onPress={() => playCard(c, i)} onHoverIn={() => setHoveredCard(i)} onHoverOut={() => setHoveredCard(null)} style={({ pressed }) => [{ marginHorizontal: 5, transform: [{ translateY: pressed || hoveredCard === i ? -10 : 0 }], shadowColor: "#fff", shadowOffset: { width: 0, height: 0 }, shadowOpacity: pressed || hoveredCard === i ? 1 : 0, shadowRadius: pressed || hoveredCard === i ? 20 : 0 }]}>
-                                    <Image source={c === "king" ? imgs.king : c === "peasant" ? imgs.peasant : imgs.villager} style={{ width: 90, height: 120 }} />
+                                    <Image source={c === "king" ? imgs.king : c === "peasant" ? imgs.peasant : imgs.villager} style={{ width: cardW, height: cardH }} />
                                 </Pressable>
                             ))}
                         </View>
