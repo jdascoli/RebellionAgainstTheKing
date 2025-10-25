@@ -18,6 +18,10 @@ export default function Singleplayer() {
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
     const [canPlay, setCanPlay] = useState(true);
     const [gameResult, setGameResult] = useState<"win" | "lose" | null>(null);
+    const [playerTurn, setPlayerTurn] = useState<"me" | "op">("me");
+    const [hiddenBotCard, setHiddenBotCard] = useState<string | null>(null);
+    const [roundInProgress, setRoundInProgress] = useState(false);
+    const [nextStarter, setNextStarter] = useState<"me" | "op">("me");
 
     const router = useRouter();
 
@@ -44,13 +48,49 @@ export default function Singleplayer() {
         else if (beats[opponentCard] === playerCard) return "lose";
         return "tie";
     };
-
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            const navEntries = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
-            if (navEntries[0]?.type === "reload") requestAnimationFrame(() => router.push("/"));
+        if (playerTurn === "op" && !gameResult && showCards && !flipping && !roundInProgress && opHand.length > 0) {
+            setRoundInProgress(true);
+            setCanPlay(false);
+
+            setTimeout(() => {
+                const randIndex = Math.floor(Math.random() * opHand.length);
+                const opCard = opHand[randIndex];
+                setOpHand((prev) => prev.filter((_, i) => i !== randIndex));
+
+                const lastPair = playedPairs[playedPairs.length - 1];
+
+                if (lastPair && lastPair.me !== "" && lastPair.op === "") { //player goes first
+                    setPlayedPairs((prev) => {
+                        const updated = [...prev];
+                        updated[updated.length - 1] = { ...updated[updated.length - 1], op: opCard };
+                        return updated;
+                    });
+
+                    setTimeout(() => {
+                        const result = determineWinner(lastPair.me, opCard);
+                        setRevealedRounds((prev) => [...prev, prev.length]);
+                        if (result === "win" || result === "lose") setGameResult(result);
+                        else setPlayerTurn("me");
+                        setTimeout(() => {
+                            setCanPlay(true);
+                            setRoundInProgress(false);
+                        }, 800);
+                    }, 800);
+                } else { //bot goes first
+                    setHiddenBotCard(opCard);
+                    setPlayedPairs((prev) => [...prev, { me: "", op: opCard }]);
+                    setTimeout(() => {
+                        setPlayerTurn("me");
+                        setCanPlay(true);
+                        setRoundInProgress(false);
+                    }, 800);
+                }
+            }, 800);
         }
-    }, [router]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [playerTurn, gameResult, showCards, flipping, roundInProgress, opHand, playedPairs]);
+
 
 
     useEffect(() => {
@@ -68,38 +108,85 @@ export default function Singleplayer() {
         if (flipResult === "heads") {
             setHand(["king", "villager", "villager", "villager", "villager"]);
             setOpHand(["peasant", "villager", "villager", "villager", "villager"]);
+            setPlayerTurn("me");
+            setNextStarter("op");
         }
         else {
             setHand(["peasant", "villager", "villager", "villager", "villager"]);
             setOpHand(["king", "villager", "villager", "villager", "villager"]);
+            setPlayerTurn("op");
+            setNextStarter("me");
         }
     };
 
     const playCard = (card: string, index: number) => {
-        if (!canPlay) return;
+        if (!canPlay || playerTurn !== "me" || roundInProgress) return;
         setCanPlay(false);
+        setRoundInProgress(true);
         setHand((prev) => prev.filter((_, i) => i !== index));
-        setPlayedPairs((prev) => [...prev, { me: card, op: "" }]);
 
-        setTimeout(() => {
-            const randIndex = Math.floor(Math.random() * opHand.length);
-            const opCard = opHand[randIndex];
-            setOpHand((prev) => prev.filter((_, i) => i !== randIndex));
+        const lastPair = playedPairs[playedPairs.length - 1];
 
+        if (lastPair && lastPair.op !== "" && lastPair.me === "") {
+            const opCard = hiddenBotCard;
+            if (!opCard) {
+                console.warn("Opponent card not ready yet.");
+                return;
+            }
+            setHiddenBotCard(null);
             setPlayedPairs((prev) => {
                 const updated = [...prev];
-                const lastIndex = updated.length - 1;
-                updated[lastIndex] = { ...updated[lastIndex], op: opCard };
+                updated[updated.length - 1] = { me: card, op: opCard };
                 return updated;
             });
+
             setTimeout(() => {
-                const result = determineWinner(card, opCard);
+                const result = determineWinner(card, lastPair.op);
                 setRevealedRounds((prev) => [...prev, prev.length]);
                 if (result === "win" || result === "lose") setGameResult(result);
-                else { setCanPlay(true); }
-            }, 1000);
-        }, 600);
+                
+                else {
+                    setNextStarter((prev) => (prev === "me" ? "op" : "me"));
+                    setPlayerTurn(nextStarter);
+                }
+
+                setTimeout(() => {
+                    setCanPlay(true);
+                    setRoundInProgress(false);
+                }, 800);
+            }, 800);
+        } else {
+            setPlayedPairs((prev) => [...prev, { me: card, op: "" }]);
+            setTimeout(() => {
+                const randIndex = Math.floor(Math.random() * opHand.length);
+                const opCard = opHand[randIndex];
+                setOpHand((prev) => prev.filter((_, i) => i !== randIndex));
+
+                setPlayedPairs((prev) => {
+                    const updated = [...prev];
+                    const lastIndex = updated.length - 1;
+                    updated[lastIndex] = { ...updated[lastIndex], op: opCard };
+                    return updated;
+                });
+
+                setTimeout(() => {
+                    const result = determineWinner(card, opCard);
+                    setRevealedRounds((prev) => [...prev, prev.length]);
+                    if (result === "win" || result === "lose") setGameResult(result);
+                    else {
+                        setNextStarter((prev) => (prev === "me" ? "op" : "me"));
+                        setPlayerTurn(nextStarter);
+                    }
+
+                    setTimeout(() => {
+                        setCanPlay(true);
+                        setRoundInProgress(false);
+                    }, 1000);
+                }, 800);
+            }, 800);
+        }
     };
+
 
     const styles = StyleSheet.create({
         videoContainer: { width: 300, height: 300, justifyContent: "center", alignItems: "center" },
@@ -136,10 +223,11 @@ export default function Singleplayer() {
                                         source={{ uri: videoUri }}
                                         shouldPlay
                                         isMuted
-                                        useNativeControls
+                                        isLooping={false}
+                                        useNativeControls={false}
                                         resizeMode={ResizeMode.CONTAIN}
                                         style={{ width: 300, height: 300 }}
-                                        onPlaybackStatusUpdate={(status) => { if ('isLoaded' in status && status.isLoaded && status.didJustFinish) setFlipping(false); }}
+                                        onPlaybackStatusUpdate={(status) => { if ('isLoaded' in status && status.isLoaded && status.didJustFinish) endFlip() }}
                                     />
                                 )}
                             </View>
@@ -152,12 +240,17 @@ export default function Singleplayer() {
                                 const revealed = revealedRounds.includes(idx);
                                 return (
                                     <View key={idx} style={{ marginLeft: idx === 0 ? 0 : spacing, alignItems: "center" }}>
-                                        <Image source={revealed ? pair.op === "king" ? kingImg : pair.op === "peasant" ? peasantImg : villagerImg : backImg}
-                                            style={{ width: 90, height: 120, marginBottom: 10 }}
-                                        />
-                                        <Image source={revealed ? pair.me === "king" ? kingImg : pair.me === "peasant" ? peasantImg : villagerImg : backImg}
-                                            style={{ width: 90, height: 120 }}
-                                        />
+                                        {pair.op !== "" ? (
+                                            <Image source={revealed ? pair.op === "king" ? kingImg : pair.op === "peasant" ? peasantImg : villagerImg : backImg}
+                                                style={{ width: 90, height: 120, marginBottom: 10 }} />) :
+                                            (<View style={{ width: 90, height: 120, marginBottom: 10 }} />)}
+                                        {pair.me !== "" ? (
+                                            <Image
+                                                source={revealed ? pair.me === "king" ? kingImg : pair.me === "peasant" ? peasantImg : villagerImg : backImg}
+                                                style={{ width: 90, height: 120 }}/> ) : 
+                                                idx === playedPairs.length - 1 && pair.op !== "" ? 
+                                        (<View style={{ width: 90, height: 120 }} />) : 
+                                        (<View style={{ width: 90, height: 120 }} />)}
                                     </View>
                                 );
                             })}
