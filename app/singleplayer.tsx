@@ -4,6 +4,7 @@ import { VideoView as ExpoVideo, useVideoPlayer } from "expo-video"
 import { useEffect, useState } from "react"
 import { Animated, Dimensions, Easing, Image, ImageBackground, Platform, Pressable, StyleSheet, Text, View } from "react-native"
 import { Video as WebVideo } from "react-native-video"
+import { chooseAdaptiveBotCard, recordPlayerMove } from "../components/adaptiveAI"
 
 // ================================
 // Singleplayer Game Screen
@@ -33,6 +34,7 @@ export default function Singleplayer() {
     const [hiddenBotCard, setHiddenBotCard] = useState<string | null>(null)
     const [roundInProgress, setRoundInProgress] = useState(false)
     const [nextStarter, setNextStarter] = useState<"me" | "op">("me")
+    const [playerRole, setPlayerRole] = useState<"king" | "peasant">("king")
 
     // -------------------------------
     // Responsive Layout
@@ -99,10 +101,10 @@ export default function Singleplayer() {
         setRoundInProgress(true)
         setCanPlay(false)
 
-        setTimeout(() => {
-            const idx = Math.floor(Math.random() * opHand.length)
-            const opCard = opHand[idx]
-            setOpHand(p => p.filter((_, i) => i !== idx))
+        const runAI = async () => {
+            await new Promise(r => setTimeout(r, 800))
+            const { card: opCard} = await chooseAdaptiveBotCard(opHand, nextStarter === "me" ? "second" : "first", playerRole)
+            setOpHand(p => p.filter(c => c !== opCard))
             const last = playedPairs[playedPairs.length - 1]
 
             // If player already played, this completes the round
@@ -113,8 +115,11 @@ export default function Singleplayer() {
                     setRevealedRounds(p => [...p, p.length])
                     if (res === "win" || res === "lose") setGameResult(res)
                     else { // Alternate who starts next round
-                        setNextStarter(prev => prev === "me" ? "op" : "me")
-                        setPlayerTurn(nextStarter) 
+                        setNextStarter(prev => {
+                            const next = prev === "me" ? "op" : "me"
+                            setPlayerTurn(next)
+                            return next
+                        })
                     }
                     setTimeout(() => { setCanPlay(true); setRoundInProgress(false) }, 800)
                 }, 800)
@@ -123,7 +128,8 @@ export default function Singleplayer() {
                 setPlayedPairs(p => [...p, { me: "", op: opCard }])
                 setTimeout(() => { setPlayerTurn("me"); setCanPlay(true); setRoundInProgress(false) }, 800)
             }
-        }, 800)
+        };
+        runAI()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [playerTurn, gameResult, showCards, flipping, roundInProgress, opHand, playedPairs])
 
@@ -144,10 +150,12 @@ export default function Singleplayer() {
             setHand(["king", "villager", "villager", "villager", "villager"])
             setOpHand(["peasant", "villager", "villager", "villager", "villager"])
             setPlayerTurn("me"); setNextStarter("op"); setFlipMessage("You go first")
+            setPlayerRole("king")
         } else {
             setHand(["peasant", "villager", "villager", "villager", "villager"])
             setOpHand(["king", "villager", "villager", "villager", "villager"])
             setPlayerTurn("op"); setNextStarter("me"); setFlipMessage("You go second")
+            setPlayerRole("peasant")
         }
         // Show “You go first/second” text briefly
         setShowFlipMessage(true)
@@ -163,6 +171,7 @@ export default function Singleplayer() {
         if (!canPlay || playerTurn !== "me" || roundInProgress) return
         setCanPlay(false); setRoundInProgress(true)
         setHand(p => p.filter((_, i) => i !== index))
+        recordPlayerMove(nextStarter === "me" ? "first" : "second", card as Card, index)
         const last = playedPairs[playedPairs.length - 1]
 
         //bot already played 
