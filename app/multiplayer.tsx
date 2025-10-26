@@ -30,7 +30,7 @@ export default function Multiplayer() {
     const [gameResult, setGameResult] = useState<"win" | "lose" | null>(null)
     const [playerTurn, setPlayerTurn] = useState<"me" | "op">("me")
     const [nextStarter, setNextStarter] = useState<"me" | "op">("me")
-
+    const [popupMessage, setPopupMessage] = useState<string | null>(null)
 
     type Card = "king" | "villager" | "peasant"
     const beats: Record<Card, Card> = { king: "villager", villager: "peasant", peasant: "king" }
@@ -64,6 +64,17 @@ export default function Multiplayer() {
         back: require("../assets/images/back.png")
     }
 
+    const [popupAnim] = useState(new Animated.Value(0))
+    const showPopup = (msg: string) => {
+        setPopupMessage(msg)
+        Animated.sequence([
+            Animated.timing(popupAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+            Animated.delay(2000),
+            Animated.timing(popupAnim, { toValue: 0, duration: 300, useNativeDriver: true })
+        ]).start(() => setPopupMessage(null))
+    }
+
+
     // -------------------------------
     // Connection setup
     // -------------------------------
@@ -72,6 +83,10 @@ export default function Multiplayer() {
         c.initListeners()
         c.peer.on("open", (id) => setPeerId(id))
         c.onMessage = handleMessage
+        c.peer.on("error", (err: any) => {
+            console.warn("Peer error:", err)
+            showPopup("Lobby does not exist or is already full")
+        })
         setConn(c)
         return () => c.destroy()
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -268,7 +283,22 @@ export default function Multiplayer() {
                     style={{ backgroundColor: "rgba(255,255,255,0.1)", color: "white", borderRadius: 8, padding: 8, width: 200, textAlign: "center" }}
                 />
                 <Pressable
-                    onPress={() => { conn?.connectTo(targetId); setConnected(true) }}
+                    onPress={async () => {
+                        if (!targetId.trim()) {
+                            showPopup("Enter a valid ID first")
+                            return
+                        }
+                        try {
+                            await conn?.connectTo(targetId)
+                            setConnected(true)
+                        } catch (err: any) {
+                            if (err.message === "LOBBY_NOT_FOUND") {
+                                showPopup("Lobby does not exist or is not hosted yet")
+                            } else {
+                                showPopup("Lobby is already full or unavailable")
+                            }
+                        }
+                    }}
                     style={{ marginTop: 20, backgroundColor: "rgb(12, 66, 14)", padding: 12, borderRadius: 10 }}
                 >
                     <Text style={{ color: "white", fontSize: 18 }}>Connect</Text>
@@ -279,6 +309,31 @@ export default function Multiplayer() {
                 >
                     <Text style={{ color: "white", fontSize: 18 }}>Start as Host</Text>
                 </Pressable>
+                {popupMessage && (
+                    <Animated.View
+                        style={{
+                            position: "absolute",
+                            bottom: 100,
+                            left: 0,
+                            right: 0,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            opacity: popupAnim,
+                            zIndex: 9999,
+                        }}
+                    >
+                        <View style={{
+                            backgroundColor: "rgba(0,0,0,0.8)",
+                            paddingHorizontal: 20,
+                            paddingVertical: 10,
+                            borderRadius: 20,
+                            borderWidth: 1,
+                            borderColor: "white",
+                        }}>
+                            <Text style={{ color: "white", fontSize: 16 }}>{popupMessage}</Text>
+                        </View>
+                    </Animated.View>
+                )}
             </ImageBackground>
         )
     }
