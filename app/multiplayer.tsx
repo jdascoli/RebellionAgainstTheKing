@@ -12,6 +12,7 @@ export default function Multiplayer() {
     const [targetId, setTargetId] = useState("")
     const [connected, setConnected] = useState(false)
     const [isHost, setIsHost] = useState(false)
+    const [readyToFlip, setReadyToFlip] = useState(false);
 
     // Game State
     const [flipping, setFlipping] = useState(false)
@@ -141,6 +142,30 @@ export default function Multiplayer() {
         setShowFlipMessage(true)
         setTimeout(() => setShowFlipMessage(false), 2000)
     }
+
+    useEffect(() => {
+        if (conn) {
+            conn.peer.on("connection", (c) => {
+                // host received connection
+                console.log("Host: active connection open:", c.peer);
+                setReadyToFlip(true);
+            });
+            // also on client side connect:
+            conn.peer.on("open", (id) => {
+                console.log("Peer open id:", id);
+                // If you are client, maybe set ready if connected to host
+                if (!isHost && conn.conn && conn.conn.open) {
+                    setReadyToFlip(true);
+                }
+            });
+            if (conn.conn) {
+                conn.conn.on("open", () => {
+                    console.log("Client: data connection open");
+                    if (!isHost) setReadyToFlip(true);
+                });
+            }
+        }
+    }, [conn, isHost]);
 
     // -------------------------------
     // Card Play Handling
@@ -340,9 +365,9 @@ export default function Multiplayer() {
         <ImageBackground source={imgs.moss} resizeMode="cover" style={[s.image, s.video]}>
             <View style={s.out}>
                 <View style={s.in}>
-                    {isHost && connected && !flipResult && (
+                    {isHost && readyToFlip && !flipResult && (
                         <Pressable onPress={flipCoin} style={{ marginTop: 20, backgroundColor: "rgb(40,90,40)", padding: 12, borderRadius: 10 }}>
-                            <Text style={{ color: "white", fontSize: 18 }}>Flip Coin</Text>
+                            <Text style={{ color: "white", fontSize: 18 }}>Start Game</Text>
                         </Pressable>
                     )}
                     {flipping && (
