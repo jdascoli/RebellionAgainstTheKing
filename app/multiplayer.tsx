@@ -7,8 +7,6 @@ import { Video as WebVideo } from "react-native-video"
 import { MultiplayerConnection } from "../components/multiplayerConnection"
 
 type Card = "king" | "villager" | "peasant"
-const beats: Record<Card, Card> = { king: "villager", villager: "peasant", peasant: "king" }
-const determineWinner = (me: Card, op: Card) => beats[me] === op ? "win" : beats[op] === me ? "lose" : "tie"
 
 export default function Multiplayer() {
     const router = useRouter()
@@ -27,17 +25,11 @@ export default function Multiplayer() {
     const [hand, setHand] = useState<Card[]>([])
     const [opHand, setOpHand] = useState<Card[]>([])
     const [playedPairs, setPlayedPairs] = useState<{ me: string; op: string }[]>([])
-    const [revealedRounds, setRevealedRounds] = useState<number[]>([])
     const [hoveredCard, setHoveredCard] = useState<number | null>(null)
     const [canPlay, setCanPlay] = useState(true)
-    const [gameResult, setGameResult] = useState<"win" | "lose" | null>(null)
-    const [playerTurn, setPlayerTurn] = useState<"me" | "op">("me")
     const [roundInProgress, setRoundInProgress] = useState(false)
-    const [nextStarter, setNextStarter] = useState<"me" | "op">("me")
 
     const [screen, setScreen] = useState(Dimensions.get("window"))
-
-    // Update card sizing dynamically on resize / rotation
     useEffect(() => {
         const sub = Dimensions.addEventListener("change", ({ window }) => setScreen(window))
         return () => sub.remove()
@@ -46,8 +38,6 @@ export default function Multiplayer() {
     const screenW = screen.width
     const screenH = screen.height
     const isMobile = Platform.OS !== "web"
-
-    // Card sizing logic 
     const widthScale = 0.45
     const heightScale = 0.15
     const maxCards = 5
@@ -55,8 +45,6 @@ export default function Multiplayer() {
     const baseSize = Math.min(maxWidthPerCard, screenH * heightScale)
     const cardW = Math.min(Math.max(baseSize, 45), isMobile ? 80 : 140)
     const cardH = cardW * 1.33
-
-    // Card spacing between played pairs
     const spacing = Math.min((400 * 0.33) / (playedPairs.length - 1 || 1), 40)
 
     const imgs = {
@@ -69,39 +57,9 @@ export default function Multiplayer() {
         back: require("../assets/images/back.png")
     }
 
-    const endFlip = () => {
-        setFlipping(false); setShowCards(true)
-        if (flipResult === "heads") {
-            setHand(["king", "villager", "villager", "villager", "villager"])
-            setOpHand(["peasant", "villager", "villager", "villager", "villager"])
-            setPlayerTurn("me"); setNextStarter("op"); setFlipMessage("You go first")
-        } else {
-            setHand(["peasant", "villager", "villager", "villager", "villager"])
-            setOpHand(["king", "villager", "villager", "villager", "villager"])
-            setPlayerTurn("op"); setNextStarter("me"); setFlipMessage("You go second")
-        }
-
-        // Show “You go first/second” text briefly
-        setShowFlipMessage(true)
-        setTimeout(() => {
-            setShowFlipMessage(false); setShowCards(true)
-        }, 2000)
-    }
-
-    // Fade animation for “You go first / second”
-    const [fadeAnim] = useState(new Animated.Value(0))
-
-    useEffect(() => {
-        if (showFlipMessage) {
-            Animated.sequence([
-                Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.exp) }),
-                Animated.delay(1000),
-                Animated.timing(fadeAnim, { toValue: 0, duration: 500, useNativeDriver: true, easing: Easing.in(Easing.exp) })
-            ]).start()
-        }
-    }, [showFlipMessage, fadeAnim])
-
+    // -------------------------------
     // Connection setup
+    // -------------------------------
     useEffect(() => {
         const c = new MultiplayerConnection()
         c.initListeners()
@@ -112,43 +70,50 @@ export default function Multiplayer() {
     }, [])
 
     const handleMessage = (msg: any) => {
-        if (msg.type === "FLIP_RESULT") startGame(msg.result)
+        if (msg.type === "FLIP_RESULT") playFlipAnimation(msg.result)
         if (msg.type === "PLAY_CARD") handleOpponentPlay(msg.card)
     }
 
-    // Coin flip logic
+    // -------------------------------
+    // Coin Flip Logic
+    // -------------------------------
     const flipCoin = () => {
         if (!conn) return
         const res = Math.random() < 0.5 ? "heads" : "tails"
         conn.send({ type: "FLIP_RESULT", result: res })
-        startGame(res)
+        playFlipAnimation(res)
+    }
+
+    const playFlipAnimation = (res: "heads" | "tails") => {
+        setFlipping(true)
+        setFlipResult(res)
+        setShowCards(false)
+        setShowFlipMessage(false)
     }
 
     const startGame = (res: "heads" | "tails") => {
-        setFlipping(true)
-        setFlipResult(res)
-        setTimeout(() => {
-            setFlipping(false)
-            setShowCards(true)
-            if (res === "heads") {
-                setFlipMessage("You go first")
-                setHand(["king", "villager", "villager", "villager", "villager"])
-                setOpHand(["peasant", "villager", "villager", "villager", "villager"])
-                setPlayerTurn("me")
-                setNextStarter("op")
-            } else {
-                setFlipMessage("You go second")
-                setHand(["peasant", "villager", "villager", "villager", "villager"])
-                setOpHand(["king", "villager", "villager", "villager", "villager"])
-                setPlayerTurn("op")
-                setNextStarter("me")
-            }
-            setShowFlipMessage(true)
-            setTimeout(() => setShowFlipMessage(false), 2000)
-        }, 1500)
+        setFlipping(false)
+        setShowCards(true)
+
+        if (res === "heads") {
+            setFlipMessage("You go first")
+            setHand(["king", "villager", "villager", "villager", "villager"])
+            setOpHand(["peasant", "villager", "villager", "villager", "villager"])
+            setCanPlay(true)
+        } else {
+            setFlipMessage("You go second")
+            setHand(["peasant", "villager", "villager", "villager", "villager"])
+            setOpHand(["king", "villager", "villager", "villager", "villager"])
+            setCanPlay(false)
+        }
+
+        setShowFlipMessage(true)
+        setTimeout(() => setShowFlipMessage(false), 2000)
     }
 
-    // Card play handling
+    // -------------------------------
+    // Card Play Handling
+    // -------------------------------
     const handleOpponentPlay = (opCard: Card) => {
         setPlayedPairs(p => {
             const u = [...p]
@@ -156,12 +121,11 @@ export default function Multiplayer() {
             else u.push({ me: "", op: opCard })
             return u
         })
-        setPlayerTurn("me")
         setCanPlay(true)
     }
 
     const playCard = (card: Card, index: number) => {
-        if (!canPlay || playerTurn !== "me" || roundInProgress) return
+        if (!canPlay || roundInProgress) return
         setCanPlay(false)
         setRoundInProgress(true)
         setHand(p => p.filter((_, i) => i !== index))
@@ -170,16 +134,29 @@ export default function Multiplayer() {
         setTimeout(() => setRoundInProgress(false), 800)
     }
 
-    // Coin flip video
+    // -------------------------------
+    // Coin Flip Video
+    // -------------------------------
     const vid = flipResult === "heads" ? imgs.head : imgs.tail
     const player = useVideoPlayer(vid, (p) => { p.play(); p.loop = false; p.muted = true })
     useEventListener(player, "playingChange", () => {
-        if (!player.playing && flipping) setFlipping(false)
+        if (!player.playing && flipping && flipResult) startGame(flipResult)
     })
 
     // -------------------------------
-    // Layout Styles
+    // Animations & Styles
     // -------------------------------
+    const [fadeAnim] = useState(new Animated.Value(0))
+    useEffect(() => {
+        if (showFlipMessage) {
+            Animated.sequence([
+                Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.exp) }),
+                Animated.delay(1000),
+                Animated.timing(fadeAnim, { toValue: 0, duration: 500, useNativeDriver: true, easing: Easing.in(Easing.exp) })
+            ]).start()
+        }
+    }, [showFlipMessage, fadeAnim])
+
     const s = StyleSheet.create({
         videoBox: { width: 300, height: 300, justifyContent: "center", alignItems: "center" },
         video: { width: "100%", height: "100%" },
@@ -190,13 +167,16 @@ export default function Multiplayer() {
         opRow: { position: "absolute", top: -20, flexDirection: "row", justifyContent: "center", alignItems: "center" }
     })
 
+    // -------------------------------
+    // Connection Screen
+    // -------------------------------
     if (!connected) {
         return (
             <ImageBackground source={imgs.moss} style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
                 <View style={{ alignItems: "center", marginBottom: 20 }}>
                     <Text style={{ color: "white", fontSize: 20, marginBottom: 10 }}>Your ID:</Text>
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
-                        <Text selectable style={{ color: "white", fontSize: 16, marginBottom: 20 }}>{peerId || "..."}</Text>
+                        <Text selectable style={{ color: "white", fontSize: 16 }}>{peerId || "..."}</Text>
                         <Pressable
                             onPress={async () => {
                                 if (!peerId) return
@@ -207,18 +187,13 @@ export default function Multiplayer() {
                                     console.warn("Copy failed:", err)
                                 }
                             }}
-                            style={{
-                                marginLeft: 8,
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                                backgroundColor: "rgba(255,255,255,0.15)",
-                                borderRadius: 6,
-                            }}
+                            style={{ marginLeft: 8, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 6 }}
                         >
                             <Text style={{ color: "white", fontSize: 14 }}>📋</Text>
                         </Pressable>
                     </View>
                 </View>
+
                 <TextInput
                     value={targetId}
                     onChangeText={setTargetId}
@@ -238,30 +213,42 @@ export default function Multiplayer() {
                 >
                     <Text style={{ color: "white", fontSize: 18 }}>Start as Host</Text>
                 </Pressable>
+
+                {isHost && connected && !flipResult && (
+                    <Pressable
+                        onPress={flipCoin}
+                        style={{ marginTop: 20, backgroundColor: "rgb(40,90,40)", padding: 12, borderRadius: 10 }}
+                    >
+                        <Text style={{ color: "white", fontSize: 18 }}>Flip Coin</Text>
+                    </Pressable>
+                )}
             </ImageBackground>
         )
     }
 
+    // -------------------------------
+    // Game Screen
+    // -------------------------------
     return (
         <ImageBackground source={imgs.moss} resizeMode="cover" style={[s.image, s.video]}>
             <View style={s.out}>
                 <View style={s.in}>
                     {flipping && (
-                        <View>
-                            <View style={s.videoBox}>
-                                {Platform.OS === "web" ? (
-                                    <WebVideo key={Date.now()} source={{ uri: vid }} style={s.video} resizeMode="contain"
-                                        repeat={false} controls={false} paused={false} onEnd={endFlip} />
-                                ) : (
-                                    <ExpoVideo player={player} style={{ width: 300, height: 300 }} contentFit="contain" allowsFullscreen={false}
-                                        allowsPictureInPicture={false} nativeControls={false} />
-                                )}
-                            </View>
+                        <View style={s.videoBox}>
+                            {Platform.OS === "web" ? (
+                                <WebVideo key={Date.now()} source={{ uri: vid }} style={s.video} resizeMode="contain"
+                                    repeat={false} controls={false} paused={false} onEnd={() => startGame(flipResult!)} />
+                            ) : (
+                                <ExpoVideo player={player} style={{ width: 300, height: 300 }}
+                                    contentFit="contain" allowsFullscreen={false}
+                                    allowsPictureInPicture={false} nativeControls={false} />
+                            )}
                         </View>
                     )}
                     {showFlipMessage && (
                         <Animated.View style={{
-                            position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center",
+                            position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+                            justifyContent: "center", alignItems: "center",
                             backgroundColor: "rgba(0,0,0,0.6)", opacity: fadeAnim
                         }}>
                             <Text style={{
@@ -274,42 +261,37 @@ export default function Multiplayer() {
                     )}
                     {playedPairs.length > 0 && (
                         <View style={{ position: "absolute", top: screenH * 0.22, width: "100%", flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
-                            {playedPairs.map((p, i) => {
-                                const revealed = revealedRounds.includes(i)
-                                return (
-                                    <View key={i} style={{ marginLeft: i === 0 ? 0 : spacing, alignItems: "center" }}>
-                                        {p.op ? (
-                                            <Image source={revealed ? imgs[p.op as keyof typeof imgs] ?? imgs.villager : imgs.back} style={{ width: cardW, height: cardH, marginBottom: 10 }} />
-                                        ) : (
-                                            <View style={{ width: cardW, height: cardH, marginBottom: 10 }} />
-                                        )}
-                                        {p.me ? (
-                                            <Image source={revealed ? imgs[p.me as keyof typeof imgs] ?? imgs.villager : imgs.back} style={{ width: cardW, height: cardH }} />
-                                        ) : i === playedPairs.length - 1 && p.op ? (
-                                            <View style={{ width: cardW, height: cardH }} />
-                                        ) : (
-                                            <View style={{ width: cardW, height: cardH }} />
-                                        )}
-                                    </View>
-                                )
-                            })}
-                        </View>
-                    )}
-                    {gameResult && (
-                        <View style={{ position: "absolute", top: "40%", alignItems: "center" }}>
-                            <Text style={{ fontSize: 32, color: "white" }}>{gameResult === "win" ? "You Win!" : "You Lose!"}</Text>
-                            <Pressable onPress={() => router.push("/")} style={{ marginTop: 20, padding: 10, backgroundColor: "blue", borderRadius: 8 }}>
-                                <Text style={{ color: "white" }}>Return to Menu</Text>
-                            </Pressable>
+                            {playedPairs.map((p, i) => (
+                                <View key={i} style={{ marginLeft: i === 0 ? 0 : spacing, alignItems: "center" }}>
+                                    {p.op ? (
+                                        <Image source={imgs[p.op as keyof typeof imgs]} style={{ width: cardW, height: cardH, marginBottom: 10 }} />
+                                    ) : (
+                                        <View style={{ width: cardW, height: cardH, marginBottom: 10 }} />
+                                    )}
+                                    {p.me ? (
+                                        <Image source={imgs[p.me as keyof typeof imgs]} style={{ width: cardW, height: cardH }} />
+                                    ) : (
+                                        <View style={{ width: cardW, height: cardH }} />
+                                    )}
+                                </View>
+                            ))}
                         </View>
                     )}
                 </View>
+
                 {showCards && (
                     <>
                         <View style={s.opRow}>{opHand.map((_, i) => <Image key={i} source={imgs.back} style={{ width: cardW, height: cardH }} />)}</View>
                         <View style={s.row}>
                             {hand.map((c, i) => (
-                                <Pressable key={i} disabled={!canPlay} onPress={() => playCard(c, i)} onHoverIn={() => setHoveredCard(i)} onHoverOut={() => setHoveredCard(null)} style={({ pressed }) => [{ marginHorizontal: 5, transform: [{ translateY: pressed || hoveredCard === i ? -10 : 0 }], shadowColor: "#fff", shadowOffset: { width: 0, height: 0 }, shadowOpacity: pressed || hoveredCard === i ? 1 : 0, shadowRadius: pressed || hoveredCard === i ? 20 : 0 }]}>
+                                <Pressable key={i} disabled={!canPlay} onPress={() => playCard(c, i)} onHoverIn={() => setHoveredCard(i)} onHoverOut={() => setHoveredCard(null)} style={({ pressed }) => [{
+                                    marginHorizontal: 5,
+                                    transform: [{ translateY: pressed || hoveredCard === i ? -10 : 0 }],
+                                    shadowColor: "#fff",
+                                    shadowOffset: { width: 0, height: 0 },
+                                    shadowOpacity: pressed || hoveredCard === i ? 1 : 0,
+                                    shadowRadius: pressed || hoveredCard === i ? 20 : 0
+                                }]}>
                                     <Image source={c === "king" ? imgs.king : c === "peasant" ? imgs.peasant : imgs.villager} style={{ width: cardW, height: cardH }} />
                                 </Pressable>
                             ))}
