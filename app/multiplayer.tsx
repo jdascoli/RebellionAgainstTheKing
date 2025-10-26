@@ -29,7 +29,7 @@ export default function Multiplayer() {
     const [revealedRounds, setRevealedRounds] = useState<number[]>([])
     const [gameResult, setGameResult] = useState<"win" | "lose" | null>(null)
     const [playerTurn, setPlayerTurn] = useState<"me" | "op">("me")
-    const [nextStarter, setNextStarter] = useState<"me" | "op">("me")
+    const [, setNextStarter] = useState<"me" | "op">("me")
     const [popupMessage, setPopupMessage] = useState<string | null>(null)
 
     type Card = "king" | "villager" | "peasant"
@@ -156,20 +156,17 @@ export default function Multiplayer() {
                     const res = determineWinner(last.me as Card, opCard)
                     setRevealedRounds(prev => [...prev, prev.length])
                     if (res === "win" || res === "lose") setGameResult(res)
-                    else {
-                        setNextStarter(prev => {
-                            const next = prev === "me" ? "op" : "me"
-                            setPlayerTurn(next)
-                            setCanPlay(next === "me")
-                            return next
-                        })
-                    }
+                    setNextStarter(prev => {
+                        const next = prev === "me" ? "op" : "me";
+                        setPlayerTurn(next);
+                        setCanPlay(next === "me");
+                        return next;
+                    });
                 }, 1000)
             } else { //opponent plays first
                 u.push({ me: "", op: opCard })
                 setOpHand(prev => prev.filter((_, i) => i !== 0));
-                setNextStarter("me")
-                setPlayerTurn("me")
+                setPlayerTurn("me");
                 setTimeout(() => setCanPlay(true), 400)
             }
             return u
@@ -193,23 +190,21 @@ export default function Multiplayer() {
                     const res = determineWinner(card, last.op as Card)
                     setRevealedRounds(r => [...r, r.length])
                     if (res === "win" || res === "lose") setGameResult(res)
-                    else {
-                        setNextStarter(prev => {
-                            const next = prev === "me" ? "op" : "me"
-                            setPlayerTurn(next)
-                            setCanPlay(next === "me")
-                            return next
-                        })
-                    }
-                    setRoundInProgress(false)
+                    setNextStarter(prev => {
+                        const next = prev === "me" ? "op" : "me";
+                        setPlayerTurn(next);
+                        setCanPlay(next === "me");
+                        return next;
+                    });
+                    setRoundInProgress(false);
                 }, 1000)
             } else {
                 // You play first
                 u.push({ me: card, op: "" })
-                setNextStarter("op")
-                setRoundInProgress(false)
+                setPlayerTurn("op");
+                setCanPlay(false);
+                setRoundInProgress(false);
             }
-
             return u
         })
     }
